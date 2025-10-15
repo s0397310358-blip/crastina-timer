@@ -1,0 +1,273 @@
+<!doctype html>
+<html lang="zh-Hant">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+  <title>Crastina Timer</title>
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="theme-color" content="#1a1a1a">
+  <link rel="manifest" href="manifest.json">
+  <link rel="apple-touch-icon" href="icon-180.png">
+  <link rel="icon" href="icon-128.png" sizes="128x128">
+  <link rel="icon" type="image/png" sizes="32x32" href="favicon-32.png">
+  <link rel="icon" type="image/png" sizes="48x48" href="favicon-48.png">
+  <link rel="icon" type="image/x-icon" href="favicon.ico">
+  <style>
+    :root {
+      --fg:#e7e7ea; --muted:#a3a3b5;
+      --accent:#8b5cf6; --danger:#ef4444;
+      --panel: rgba(255,255,255,0.04);
+      --panel-border: #242437;
+      --chip:#1f1f2b;
+    }
+    * { box-sizing: border-box; }
+    html, body { height:100%; }
+    body {
+      margin:0; background: radial-gradient(1100px 780px at 50% 0%, #1a1a22 0%, #0d0d12 60%, #0a0a0f 100%);
+      color:var(--fg);
+      font-family: ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Noto Sans, "Helvetica Neue", Arial;
+      display:grid; place-items:center; padding:16px;
+      position: relative; /* for watermark */
+      overflow-x:hidden;
+    }
+    /* Watermark container */
+    .watermark {
+      position: fixed;
+      right: 12px;
+      bottom: 10px;
+      opacity: .15;              /* 15% */
+      pointer-events: none;      /* don't block clicks */
+      transform-origin: bottom right;
+      animation: wmfade .6s ease-out both;
+      filter: drop-shadow(0 8px 20px rgba(0,0,0,.4));
+    }
+    .watermark img {
+      width: min(25vw, 320px);   /* desktop ~25% width, capped */
+      max-width: 45vh;           /* don't overscale on ultra-wide */
+      height: auto;
+      display:block;
+    }
+    @keyframes wmfade { from { opacity: 0; transform: translateY(8px) scale(.98); } to { opacity: .15; transform: translateY(0) scale(1); } }
+    @media (max-width: 740px) {
+      .watermark { right: 8px; bottom: 8px; }
+      .watermark img { width: min(40vw, 220px); }
+    }
+
+    .wrap {
+      width:min(900px, 100%);
+      background:var(--panel);
+      border:1px solid var(--panel-border);
+      border-radius:28px; padding:18px;
+      backdrop-filter: blur(8px);
+      box-shadow: 0 16px 40px rgba(0,0,0,.45);
+    }
+    header { display:flex; align-items:center; justify-content:space-between; gap:12px; margin-bottom:12px; }
+    .pill { display:inline-flex; align-items:center; gap:8px; padding:6px 10px; border-radius:999px; background:#1c1c27; color:#d6d7ff; font-weight:700; font-size:12px; letter-spacing:.3px; }
+    .sub { color:var(--muted); font-size:12px; }
+
+    .grid { display:grid; grid-template-columns: 1.1fr 0.9fr; gap:18px; }
+    @media (max-width: 740px) { .grid { grid-template-columns: 1fr; } .shortcuts { order: -1; } }
+
+    .panel { padding:16px; border:1px solid var(--panel-border); border-radius:20px; background: rgba(255,255,255,0.02); }
+    .display { text-align:center; }
+    .time { font-size: clamp(56px, 12vw, 120px); font-weight:900; letter-spacing:2px; line-height:1; text-shadow: 0 6px 24px rgba(0,0,0,.45); }
+    .time.animate { animation: pulse .5s ease; }
+    @keyframes pulse { from { transform: scale(1.0); } 50% { transform: scale(1.02); } to { transform: scale(1.0); } }
+    .status { margin-top:8px; font-size:13px; color:var(--muted); min-height:19px; }
+
+    .inputs { display:flex; gap:12px; align-items:end; justify-content:center; flex-wrap:wrap; margin-top:12px; }
+    .field label { font-size:12px; color:var(--muted); display:block; margin-bottom:6px; }
+    .field input[type="number"] { width:120px; padding:12px 14px; border-radius:14px; border:1px solid #2a2a3a; background:#101018; color:var(--fg); font-size:16px; }
+
+    .controls { display:grid; grid-template-columns:1fr 1fr 1fr; gap:12px; margin-top:16px; }
+    button { appearance:none; border:none; border-radius:16px; padding:14px 16px; font-weight:800; font-size:16px; color:#0b0b10; cursor:pointer; transition: transform .06s ease, box-shadow .2s; box-shadow: 0 6px 20px rgba(0,0,0,.3); }
+    button:active { transform: translateY(1px) scale(.99); }
+    .primary { background:linear-gradient(180deg, #9f7aea, #7c3aed); color:white; }
+    .danger { background:linear-gradient(180deg, #ef4444, #b91c1c); color:white; }
+    .ghost { background:#272736; color:#e7e7ea; }
+
+    .shortcuts { display:flex; flex-direction:column; gap:12px; }
+    .sbtn { background: var(--chip); color:#e9e9fc; border:1px solid #2a2a3a; border-radius:14px; padding:12px 14px; font-weight:800; font-size:16px; box-shadow: 0 6px 20px rgba(0,0,0,.25); text-align:center; }
+    .sbtn small { display:block; color:var(--muted); font-weight:600; font-size:12px; margin-top:4px; }
+
+    footer { margin-top:18px; text-align:center; color:var(--muted); font-size:12px; }
+
+    .done { text-align:center; margin-top:16px; font-size: clamp(20px, 3.8vw, 36px); color:#d6ffe5; opacity:0; transition: opacity .3s; font-weight:800; letter-spacing:.2px;}
+    .done.show { opacity:1; }
+  </style>
+</head>
+<body>
+  <!-- Always-on watermark -->
+  <div class="watermark" aria-hidden="true">
+    <img src="crastina-logo-watermark.png" alt="Crastina watermark">
+  </div>
+
+  <div class="wrap" role="application" aria-label="Crastina 簡易倒數計時器">
+    <header>
+      <div>
+        <div class="pill">⏱️ Crastina Timer v2.2</div>
+        <div class="sub">右下角浮水印（常駐 15%）・左倒數／右快捷（3/5/15/30）</div>
+      </div>
+      <button class="ghost" id="soundTestBtn" title="測試提示音">試聽提示音🔊</button>
+    </header>
+
+    <div class="grid">
+      <!-- Left: Timer -->
+      <section class="panel display" aria-live="polite">
+        <div class="time" id="timeText">00:03:00</div>
+        <div class="status" id="statusText">待命中</div>
+
+        <div class="inputs">
+          <div class="field">
+            <label for="mins">分鐘</label>
+            <input id="mins" type="number" min="0" max="999" step="1" value="3" />
+          </div>
+          <div class="field">
+            <label for="secs">秒</label>
+            <input id="secs" type="number" min="0" max="59" step="1" value="0" />
+          </div>
+        </div>
+
+        <div class="controls">
+          <button class="primary" id="startPauseBtn">開始</button>
+          <button class="ghost" id="plus1Btn">+1 分鐘</button>
+          <button class="danger" id="resetBtn">重設</button>
+        </div>
+
+        <div class="done" id="doneMessage">今天的 Crastina 是你明日的動力。</div>
+      </section>
+
+      <!-- Right: Shortcuts -->
+      <aside class="panel shortcuts" aria-label="快捷鍵">
+        <button class="sbtn" data-min="3" data-sec="0">3 分鐘<small>Quick</small></button>
+        <button class="sbtn" data-min="5" data-sec="0">5 分鐘<small>Break</small></button>
+        <button class="sbtn" data-min="15" data-sec="0">15 分鐘<small>Deep rest</small></button>
+        <button class="sbtn" data-min="30" data-sec="0">30 分鐘<small>Focus</small></button>
+      </aside>
+    </div>
+
+    <footer>
+      <div>提示：在 iPhone/Android 的瀏覽器選單中選「加入主畫面」，就像 App 一樣使用。</div>
+    </footer>
+  </div>
+
+<script>
+(function(){
+  const timeText = document.getElementById('timeText');
+  const statusText = document.getElementById('statusText');
+  const mins = document.getElementById('mins');
+  const secs = document.getElementById('secs');
+  const startPauseBtn = document.getElementById('startPauseBtn');
+  const resetBtn = document.getElementById('resetBtn');
+  const plus1Btn = document.getElementById('plus1Btn');
+  const soundTestBtn = document.getElementById('soundTestBtn');
+  const doneEl = document.getElementById('doneMessage');
+
+  document.querySelectorAll('.sbtn').forEach(btn => {
+    btn.addEventListener('click', () => {
+      mins.value = btn.dataset.min; secs.value = btn.dataset.sec;
+      total = toSeconds(mins.value, secs.value);
+      persist(); render('模式已切換');
+    });
+  });
+
+  let total = toSeconds(mins.value, secs.value);
+  let timer = null;
+  let running = false;
+
+  const saved = localStorage.getItem('crastina_timer_last_v22');
+  if (saved) {
+    try {
+      const {m, s} = JSON.parse(saved);
+      mins.value = clamp(parseInt(m)||0, 0, 999);
+      secs.value = clamp(parseInt(s)||0, 0, 59);
+      total = toSeconds(mins.value, secs.value);
+      render();
+    } catch(_){}
+  } else { persist(); }
+
+  mins.addEventListener('change', () => { mins.value = clamp(mins.value,0,999); total = toSeconds(mins.value, secs.value); render(); persist(); });
+  secs.addEventListener('change', () => { secs.value = clamp(secs.value,0,59); total = toSeconds(mins.value, secs.value); render(); persist(); });
+
+  startPauseBtn.addEventListener('click', () => { if (!running) start(); else pause(); });
+  resetBtn.addEventListener('click', () => { pause(); total = toSeconds(mins.value, secs.value); render('已重設'); hideDone(); });
+  plus1Btn.addEventListener('click', () => { total += 60; render('已加 1 分鐘'); });
+
+  soundTestBtn.addEventListener('click', () => beep());
+
+  function start(){
+    hideDone();
+    if (total <= 0) total = toSeconds(mins.value, secs.value);
+    running = true;
+    startPauseBtn.textContent = '暫停';
+    statusText.textContent = '倒數中…';
+    tick(); timer = setInterval(tick, 1000);
+  }
+
+  function pause(){
+    running = false;
+    startPauseBtn.textContent = '開始';
+    statusText.textContent = '已暫停';
+    if (timer) clearInterval(timer);
+  }
+
+  function tick(){
+    if (total <= 0){
+      pause();
+      statusText.textContent = '完成！';
+      render();
+      try { navigator.vibrate && navigator.vibrate([180,80,180]); } catch(_){}
+      beep();
+      showDone();
+      return;
+    }
+    total -= 1; render(); animateTime();
+  }
+
+  function render(hint){
+    timeText.textContent = format(total);
+    if (hint) statusText.textContent = hint;
+    document.title = timeText.textContent + ' • Crastina Timer';
+  }
+  function animateTime(){ timeText.classList.remove('animate'); void timeText.offsetWidth; timeText.classList.add('animate'); }
+
+  function toSeconds(m,s){ m = clamp(parseInt(m)||0,0,999); s = clamp(parseInt(s)||0,0,59); return m*60 + s; }
+  function format(sec){ const m = Math.floor(sec/60); const s = sec % 60; const hh = Math.floor(m/60); const mm = m%60; if (hh>0) return `${pad(hh)}:${pad(mm)}:${pad(s)}`; return `${pad(mm)}:${pad(s)}`; }
+  function pad(n){ return String(n).padStart(2,'0'); }
+  function clamp(n,min,max){ n = Number(n); if (isNaN(n)) return min; return Math.max(min, Math.min(max, n)); }
+  function persist(){ localStorage.setItem('crastina_timer_last_v22', JSON.stringify({m: mins.value, s: secs.value})); }
+
+  function beep(){
+    const ctx = new (window.AudioContext || window.webkitAudioContext)();
+    const o = ctx.createOscillator(); const g = ctx.createGain();
+    o.type = 'sine'; o.frequency.value = 880;
+    o.connect(g); g.connect(ctx.destination);
+    const now = ctx.currentTime;
+    [0,0.18,0.36].forEach((t,i)=>{
+      const f = 880 + i*120;
+      const start = now + t;
+      const end = start + 0.14;
+      g.gain.setValueAtTime(0.0001, start);
+      g.gain.exponentialRampToValueAtTime(0.25, start + 0.03);
+      g.gain.exponentialRampToValueAtTime(0.0001, end);
+      o.frequency.setValueAtTime(f, start);
+    });
+    o.start(now); o.stop(now+0.6);
+  }
+
+  function showDone(){
+    doneEl.classList.add('show');
+    if ('Notification' in window && Notification.permission === 'granted') {
+      new Notification('Crastina Timer', { body: doneEl.textContent });
+    }
+  }
+  function hideDone(){ doneEl.classList.remove('show'); }
+
+  if ('Notification' in window && Notification.permission === 'default') {
+    setTimeout(() => Notification.requestPermission().catch(()=>{}), 1400);
+  }
+})();
+</script>
+</body>
+</html>
