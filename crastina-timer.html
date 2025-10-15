@@ -1,0 +1,191 @@
+<!doctype html>
+<html lang="zh-Hant">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Crastina Timer</title>
+  <style>
+    :root { --bg:#0b0b10; --fg:#e7e7ea; --muted:#8b8b95; --accent:#8b5cf6; --accent-2:#22c55e; --danger:#ef4444; }
+    * { box-sizing: border-box; }
+    body { margin:0; font-family: ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Noto Sans, "Helvetica Neue", Arial, "Apple Color Emoji", "Segoe UI Emoji"; background:linear-gradient(180deg,#0b0b10,#14141c); color:var(--fg); min-height:100dvh; display:grid; place-items:center; padding:24px; }
+    .app { width:min(720px,100%); border:1px solid #1f1f2a; background:rgba(255,255,255,0.02); backdrop-filter: blur(6px); border-radius:24px; padding:20px; box-shadow: 0 10px 30px rgba(0,0,0,.4); }
+    header { display:flex; align-items:center; justify-content:space-between; gap:12px; margin-bottom:12px; }
+    h1 { font-size:18px; font-weight:600; margin:0; letter-spacing:.5px; color:#cfcfe8; }
+    .sub { color:var(--muted); font-size:12px; }
+    .display { text-align:center; padding:24px 12px 8px; }
+    .time { font-size: clamp(48px, 10vw, 96px); font-weight:800; letter-spacing:2px; }
+    .controls { display:grid; grid-template-columns:1fr 1fr 1fr; gap:12px; margin-top:16px; }
+    button { appearance:none; border:none; border-radius:14px; padding:14px 16px; font-weight:700; font-size:16px; color:#0b0b10; cursor:pointer; transition: transform .06s ease, filter .2s ease; }
+    button:active { transform: translateY(1px) scale(.99); }
+    .primary { background:var(--accent); color:white; }
+    .success { background:var(--accent-2); color:#07130a; }
+    .danger { background:var(--danger); color:white; }
+    .ghost { background:#272736; color:#e7e7ea; }
+    .row { display:flex; gap:12px; align-items:center; justify-content:center; flex-wrap:wrap; }
+    .inputs { display:flex; gap:12px; align-items:center; justify-content:center; }
+    input[type="number"] { width:110px; padding:12px 14px; border-radius:12px; border:1px solid #2a2a3a; background:#101018; color:var(--fg); font-size:16px; }
+    label { font-size:12px; color:var(--muted); display:block; margin-bottom:6px; }
+    footer { margin-top:18px; text-align:center; color:var(--muted); font-size:12px; }
+    .pill { display:inline-flex; align-items:center; gap:8px; padding:6px 10px; border-radius:999px; background:#1c1c27; color:#cfd0ff; font-weight:600; font-size:12px; }
+    a { color:#bfbfff; }
+  </style>
+</head>
+<body>
+  <div class="app" role="application" aria-label="Crastina 簡易倒數計時器">
+    <header>
+      <div>
+        <div class="pill">⏱️ Crastina Timer</div>
+        <div class="sub">一鍵開始 / 暫停 / 重設；可自訂時間並記住上次設定</div>
+      </div>
+      <button class="ghost" id="soundTestBtn" title="測試提示音">試聽提示音🔊</button>
+    </header>
+
+    <section class="display" aria-live="polite">
+      <div class="time" id="timeText">00:25:00</div>
+      <div class="row" style="margin-top:6px">
+        <span class="sub" id="statusText">待命中</span>
+      </div>
+    </section>
+
+    <section class="row" style="margin-top:10px">
+      <div class="inputs">
+        <div>
+          <label for="mins">分鐘</label>
+          <input id="mins" type="number" min="0" max="999" step="1" value="25" />
+        </div>
+        <div>
+          <label for="secs">秒</label>
+          <input id="secs" type="number" min="0" max="59" step="1" value="0" />
+        </div>
+      </div>
+    </section>
+
+    <section class="controls">
+      <button class="primary" id="startPauseBtn">開始</button>
+      <button class="ghost" id="plus1Btn">+1 分鐘</button>
+      <button class="danger" id="resetBtn">重設</button>
+    </section>
+
+    <footer>
+      <div style="margin-top:6px">提示：在 iPhone/Android 的瀏覽器選單中選「加入主畫面」，就像 App 一樣使用。</div>
+    </footer>
+  </div>
+
+<script>
+(function(){
+  const timeText = document.getElementById('timeText');
+  const statusText = document.getElementById('statusText');
+  const mins = document.getElementById('mins');
+  const secs = document.getElementById('secs');
+  const startPauseBtn = document.getElementById('startPauseBtn');
+  const resetBtn = document.getElementById('resetBtn');
+  const plus1Btn = document.getElementById('plus1Btn');
+  const soundTestBtn = document.getElementById('soundTestBtn');
+
+  let total = toSeconds(mins.value, secs.value); // total seconds remaining
+  let timer = null;
+  let running = false;
+
+  // Persist last setup
+  const saved = localStorage.getItem('crastina_timer_last');
+  if (saved) {
+    try {
+      const {m, s} = JSON.parse(saved);
+      mins.value = clamp(parseInt(m)||0, 0, 999);
+      secs.value = clamp(parseInt(s)||0, 0, 59);
+      total = toSeconds(mins.value, secs.value);
+      render();
+    } catch(_){}
+  } else {
+    persist();
+  }
+
+  mins.addEventListener('change', () => { mins.value = clamp(mins.value,0,999); total = toSeconds(mins.value, secs.value); render(); persist(); });
+  secs.addEventListener('change', () => { secs.value = clamp(secs.value,0,59); total = toSeconds(mins.value, secs.value); render(); persist(); });
+
+  startPauseBtn.addEventListener('click', () => {
+    if (!running) start(); else pause();
+  });
+
+  resetBtn.addEventListener('click', () => { pause(); total = toSeconds(mins.value, secs.value); render('已重設'); });
+  plus1Btn.addEventListener('click', () => { total += 60; render('已加 1 分鐘'); });
+  soundTestBtn.addEventListener('click', () => beep());
+
+  function start(){
+    if (total <= 0) total = toSeconds(mins.value, secs.value);
+    running = true;
+    startPauseBtn.textContent = '暫停';
+    statusText.textContent = '倒數中…';
+    tick();
+    timer = setInterval(tick, 1000);
+  }
+
+  function pause(){
+    running = false;
+    startPauseBtn.textContent = '開始';
+    statusText.textContent = '已暫停';
+    if (timer) clearInterval(timer);
+  }
+
+  function tick(){
+    if (total <= 0){
+      pause();
+      statusText.textContent = '完成！';
+      render();
+      try { navigator.vibrate && navigator.vibrate([120,80,120]); } catch(_){}
+      beep();
+      return;
+    }
+    total -= 1;
+    render();
+  }
+
+  function render(hint){
+    timeText.textContent = format(total);
+    if (hint) statusText.textContent = hint;
+    document.title = timeText.textContent + ' • Crastina Timer';
+  }
+
+  function toSeconds(m,s){
+    m = clamp(parseInt(m)||0,0,999); s = clamp(parseInt(s)||0,0,59);
+    return m*60 + s;
+  }
+
+  function format(sec){
+    const m = Math.floor(sec/60);
+    const s = sec % 60;
+    const hh = Math.floor(m/60);
+    const mm = m%60;
+    if (hh>0) return `${pad(hh)}:${pad(mm)}:${pad(s)}`;
+    return `${pad(mm)}:${pad(s)}`;
+  }
+
+  function pad(n){ return String(n).padStart(2,'0'); }
+  function clamp(n,min,max){ n = Number(n); if (isNaN(n)) return min; return Math.max(min, Math.min(max, n)); }
+  function persist(){ localStorage.setItem('crastina_timer_last', JSON.stringify({m: mins.value, s: secs.value})); }
+
+  // Simple beep via WebAudio (no external file)
+  function beep(){
+    const ctx = new (window.AudioContext || window.webkitAudioContext)();
+    const o = ctx.createOscillator();
+    const g = ctx.createGain();
+    o.type = 'sine';
+    o.frequency.value = 880; // A5
+    o.connect(g); g.connect(ctx.destination);
+    g.gain.setValueAtTime(0.0001, ctx.currentTime);
+    g.gain.exponentialRampToValueAtTime(0.3, ctx.currentTime + 0.01);
+    o.start();
+    // quick triple-chirp
+    const now = ctx.currentTime;
+    [0,0.18,0.36].forEach((t,i)=>{
+      g.gain.setValueAtTime(0.0001, now+t);
+      g.gain.exponentialRampToValueAtTime(0.25, now+t+0.03);
+      g.gain.exponentialRampToValueAtTime(0.0001, now+t+0.12);
+      o.frequency.setValueAtTime(880 + i*120, now+t);
+    });
+    o.stop(now+0.6);
+  }
+})();
+</script>
+</body>
+</html>
