@@ -1,0 +1,390 @@
+<!doctype html>
+<html lang="zh-Hant">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+  <title>CRASTINA TIMER</title>
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="theme-color" content="#101016">
+  <style>
+    :root { --fg:#e8e8ee; --muted:#a3a3b5; --bg1:#141419; --bg2:#0e0e13; --bg3:#0a0a0f;
+      --start-d: clamp(120px, 26vw, 180px); --cream:#f1f0cc; --brand-red:#ed1233;
+      --btn-dark-1:#1c1c1f; --btn-dark-2:#2a2a2e; --card-1:#1b1b1f; --card-2:#2a2a33; --card-b:#333642; --card-t:#f1f0cc;
+      --chip-bg:#17171c; --chip-bd:#2b2b36; --chip-t:#dfe4ff;
+      --start-bg: linear-gradient(145deg, var(--btn-dark-1) 0%, var(--btn-dark-2) 100%); --start-color:#f9f9f9;
+      --pause-bg: linear-gradient(145deg, #f0595f 0%, var(--brand-red) 100%); --pause-color:#fff8f0;
+      --seg-ind-1:#3a3a46; --seg-ind-2:#2b2b36; --seg-border:rgba(255,255,255,.28); }
+    [data-mode="rest"] { --fg:#2c2a24; --muted:#736c5b; --bg1:#f7f2df; --bg2:#f0e5c6; --bg3:#e7d39f;
+      --card-1:#f6efd9; --card-2:#eddcb6; --card-b:#e1cfa6; --card-t:#2f2b20; --chip-bg:#f7f2df; --chip-bd:#e8d6ae; --chip-t:#2f2b20;
+      --seg-ind-1:#f0c75e; --seg-ind-2:#ed9a5a; --seg-border:#e2c541; }
+    *{box-sizing:border-box} html,body{height:100%} body{margin:0;background:radial-gradient(1100px 780px at 50% 0%,var(--bg1) 0%,var(--bg2) 55%,var(--bg3) 100%);
+      color:var(--fg);font-family:Inter,ui-sans-serif,system-ui,-apple-system,Segoe UI,Roboto,"Noto Sans TC","Helvetica Neue",Arial;
+      display:grid;place-items:center;padding:18px;overflow-x:hidden;transition:background .6s ease,color .6s ease}
+    .wrap{width:min(1100px,100%);padding:8px 6px}
+    .brand-title{text-align:center;font-weight:900;letter-spacing:.4em;text-indent:.4em;font-size:clamp(22px,4.5vw,42px);margin:2px 0 10px 0;
+      background:linear-gradient(180deg,var(--cream),rgba(255,255,255,.85));-webkit-background-clip:text;background-clip:text;color:transparent;text-transform:uppercase;user-select:none}
+    [data-mode="rest"] .brand-title{background:linear-gradient(180deg,#3b3224,#6a5b43);-webkit-background-clip:text;background-clip:text;color:transparent}
+    header{display:grid;grid-template-columns:1fr auto;align-items:center;gap:12px;margin-bottom:10px}
+    .counters{display:flex;gap:8px;flex-wrap:wrap}
+    .counter{background:rgba(214,255,229,.08);border:1px solid rgba(214,255,229,.16);color:#d6ffe5;padding:6px 10px;border-radius:999px;font-weight:800;font-size:12px}
+    [data-mode="rest"] .counter{background:rgba(10,55,47,.08);border-color:rgba(10,55,47,.18);color:#0a372f}
+    .segmented{position:relative;display:flex;align-items:center;gap:0;border-radius:999px;padding:6px;isolation:isolate;background:rgba(255,255,255,.06);
+      border:2px solid var(--seg-border);box-shadow:0 8px 18px rgba(0,0,0,.28)}
+    .seg-inner{position:relative;display:grid;grid-template-columns:1fr 1fr}
+    .seg-btn{position:relative;appearance:none;border:0;background:transparent;color:#cfd2ff;font-weight:900;letter-spacing:.5px;font-size:15px;padding:10px 18px;border-radius:999px;cursor:pointer;display:flex;align-items:center;gap:8px;z-index:1;transition:color .18s,transform .06s,filter .18s}
+    .seg-btn:hover{filter:brightness(1.08)} .seg-btn:active{transform:translateY(1px)}
+    [data-mode="rest"] .seg-btn{color:#2f2b20}
+    .segmented[data-active="focus"] .left{color:#fff} .segmented[data-active="rest"] .right{color:#2a241d}
+    .seg-btn svg{stroke:currentColor;fill:none} .seg-btn.right svg{fill:currentColor;stroke:none}
+    .seg-indicator{position:absolute;z-index:0;top:6px;bottom:6px;left:6px;width:calc(50% - 6px);background:linear-gradient(160deg,var(--seg-ind-1),var(--seg-ind-2));
+      border:2px solid var(--seg-border);border-radius:999px;transition:transform .24s ease;box-shadow:0 8px 16px rgba(0,0,0,.25),inset 0 1px 3px rgba(255,255,255,.24)}
+    .segmented[data-active="rest"] .seg-indicator{transform:translateX(100%)}
+    .segmented.switching .seg-indicator{animation:glow 500ms ease}
+    @keyframes glow{0%{box-shadow:0 0 0 rgba(255,255,255,0)}30%{box-shadow:0 0 0 6px rgba(255,255,255,.15),0 8px 16px rgba(0,0,0,.25),inset 0 1px 3px rgba(255,255,255,.24)}100%{box-shadow:0 8px 16px rgba(0,0,0,.25),inset 0 1px 3px rgba(255,255,255,.24)}}
+    .mode-row{display:flex;gap:10px;align-items:center;justify-content:flex-end;flex-wrap:wrap}
+    .switch{display:inline-flex;align-items:center;gap:8px;font-size:13px}
+    .switch input{width:18px;height:18px}
+    .icon{width:18px;height:18px;display:inline-block}
+    .icon svg{width:100%;height:100%;display:block}
+    .grid{display:grid;grid-template-columns:1.1fr 0.9fr;gap:22px;align-items:start}
+    @media (max-width:860px){.grid{grid-template-columns:1fr;gap:16px}.shortcuts,.notes{order:10}}
+    .display{text-align:center;padding:6px 8px}
+    .time{font-size:clamp(56px,12vw,120px);font-weight:900;letter-spacing:2px;line-height:1;text-shadow:0 6px 24px rgba(0,0,0,.35)}
+    [data-mode="rest"] .time{text-shadow:0 3px 10px rgba(0,0,0,.08)}
+    .status{margin-top:8px;font-size:13px;color:var(--muted);min-height:19px}
+    .inputs{display:flex;gap:12px;align-items:end;justify-content:center;flex-wrap:wrap;margin-top:14px}
+    .field label{font-size:12px;color:var(--muted);display:block;margin-bottom:6px}
+    .field input[type="number"]{width:120px;padding:12px 14px;border-radius:14px;border:1px solid #2a2a3a;background:#0f0f14;color:#ededf6;font-size:16px;transition:background .4s ease,color .4s ease,border-color .4s ease}
+    [data-mode="rest"] .field input[type="number"]{background:#fbf6e8;color:#2c2a24;border-color:#d9caa2}
+    .controls{margin-top:18px;display:flex;flex-direction:column;align-items:center;gap:14px}
+    .big-start{width:var(--start-d);height:var(--start-d);border-radius:9999px;display:grid;place-items:center;font-size:clamp(16px,4.4vw,22px);
+      font-weight:900;letter-spacing:.6px;color:var(--start-color);background:var(--start-bg);border:1px solid rgba(255,255,255,.22);cursor:pointer;
+      box-shadow:0 10px 28px rgba(0,0,0,.28),inset 0 -6px 12px rgba(0,0,0,.18);text-shadow:0 1px 2px rgba(0,0,0,.4);
+      transition:transform .06s ease,box-shadow .2s ease,filter .2s,background .2s,color .2s;user-select:none}
+    body.is-running .big-start{background:var(--pause-bg);color:var(--pause-color)}
+    .big-start:active{transform:translateY(1px) scale(.99)}
+    .shortcuts{display:grid;grid-template-columns:repeat(2,1fr);gap:12px;padding:6px 8px}
+    @media (min-width:640px){.shortcuts{grid-template-columns:repeat(4,1fr)}}
+    .sbtn{background:linear-gradient(145deg,var(--card-1) 0%,var(--card-2) 100%);border:1px solid var(--card-b);box-shadow:inset 0 1px 3px rgba(255,255,255,0.06),0 4px 14px rgba(0,0,0,0.25);
+      color:var(--card-t);border-radius:16px;padding:22px 16px;font-weight:900;font-size:28px;text-align:center;letter-spacing:.6px;transition:transform .08s ease,box-shadow .3s ease,filter .3s ease;
+      min-height:96px;display:flex;align-items:center;justify-content:center}
+    [data-mode="rest"] .sbtn{background:linear-gradient(145deg,#f6efd9 0%,#eddcb6 100%);border:1px solid #e1cfa6;color:#2f2b20}
+    .sbtn:hover{filter:brightness(1.08);transform:translateY(-1px);box-shadow:inset 0 1px 3px rgba(255,255,255,0.08),0 6px 18px rgba(0,0,0,0.35)}
+    .fav-wrap{margin-top:10px;padding:6px 8px}
+    .fav-title{font-size:12px;color:var(--muted);margin-bottom:8px;display:flex;align-items:center;gap:8px}
+    .fav-controls{display:flex;gap:8px;flex-wrap:wrap}
+    .chip{display:inline-flex;align-items:center;gap:8px;padding:8px 12px;border-radius:999px;background:var(--chip-bg);border:1px solid var(--chip-bd);color:var(--chip-t);
+      font-weight:800;font-size:14px;letter-spacing:.3px;cursor:pointer;transition:filter .2s,transform .06s}
+    .chip:active{transform:translateY(1px)} .chip .rm{font-weight:900;opacity:.7} .chip .rm:hover{opacity:1}
+    .fav-input{width:120px;padding:10px 12px;border-radius:999px;border:1px solid var(--chip-bd);background:transparent;color:var(--fg)}
+    [data-mode="rest"] .fav-input{color:#2c2a24}
+    .fav-btn{padding:10px 12px;border-radius:999px;border:1px solid var(--chip-bd);background:transparent;color:var(--fg);font-weight:800;cursor:pointer}
+    [data-mode="rest"] .fav-btn{color:#2c2a24}
+    footer{margin-top:18px;text-align:center;color:#8b8ba0;font-size:12px}
+    .done-wrap{margin-top:16px;min-height:28px}
+    .done-line{margin-top:8px;font-size:clamp(18px,3.4vw,22px);color:var(--cream);letter-spacing:.4px;opacity:0;transform:translateY(10px);font-weight:700;text-shadow:0 1px 1px rgba(0,0,0,.25);text-align:center}
+    .show .done-line{animation:fadeUp 1.5s ease forwards}
+    @keyframes fadeUp{to{opacity:1;transform:translateY(0)}}
+    .notes{margin-top:14px;display:none}
+    .notes.show{display:block;animation:fadeIn .35s ease}
+    @keyframes fadeIn{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:translateY(0)}}
+    .note-card{background:linear-gradient(145deg,var(--card-1),var(--card-2));border:1px solid var(--card-b);border-radius:16px;padding:14px;box-shadow:0 8px 22px rgba(0,0,0,.28)}
+    [data-mode="rest"] .note-card{background:linear-gradient(145deg,#f6efd9,#eddcb6);border-color:#e1cfa6;color:#2f2b20}
+    .note-title{font-weight:850;font-size:14px;margin-bottom:8px;display:flex;align-items:center;gap:8px}
+    .note-actions{display:flex;gap:8px;flex-wrap:wrap;align-items:center}
+    .note-actions button,.note-actions .ghost{appearance:none;border:1px solid var(--card-b);background:transparent;color:var(--fg);padding:8px 12px;border-radius:999px;font-weight:800;cursor:pointer}
+    [data-mode="rest"] .note-actions button,[data-mode="rest"] .note-actions .ghost{color:#2f2b20;border-color:#d0bd98}
+    .note-text{width:100%;min-height:140px;border-radius:12px;border:1px dashed var(--card-b);background:transparent;color:var(--fg);padding:12px 14px;font-size:15.5px;line-height:1.8;letter-spacing:.2px;outline:none;resize:vertical}
+    [data-mode="rest"] .note-text{color:#2f2b20;border-color:#d0bd98}
+    .note-meta{font-size:12px;color:var(--muted);margin-top:6px}
+    .note-list{margin-top:12px;display:grid;gap:8px}
+    .note-item{border:1px dashed var(--card-b);border-radius:12px;padding:10px;font-size:14px;display:grid;gap:6px;line-height:1.7;white-space:pre-wrap}
+    [data-mode="rest"] .note-item{border-color:#d0bd98;color:#2f2b20}
+    .note-item .top{display:flex;align-items:center;justify-content:space-between;gap:6px;font-size:12px;color:var(--muted)}
+    .note-item .del{cursor:pointer;padding:4px 8px;border-radius:999px;border:1px solid var(--card-b)}
+    [data-mode="rest"] .note-item .del{border-color:#d0bd98;color:#2f2b20}
+  </style>
+</head>
+<body data-mode="rest">
+  <div class="wrap" role="application" aria-label="Crastina 雙模式計時儀式">
+    <div class="brand-title">CRASTINA TIMER</div>
+
+    <header>
+      <div class="counters">
+        <div class="counter" id="focusCount">專注：0 次</div>
+        <div class="counter" id="restCount">休息：0 次</div>
+      </div>
+
+      <div class="mode-row">
+        <div class="segmented" id="segmented" data-active="rest" aria-label="模式切換">
+          <div class="seg-indicator" id="segIndicator"></div>
+          <div class="seg-inner">
+            <button class="seg-btn left" id="focusModeBtn">
+              <span class="icon" aria-hidden="true">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                  <path d="M6 20h12" />
+                  <path d="M9 20v-3a3 3 0 0 1 3-3h2" />
+                  <path d="M14 14 9 3 7 4l3 7" />
+                  <path d="M14 6h5l-3 5" />
+                </svg>
+              </span> 專注
+            </button>
+            <button class="seg-btn right" id="restModeBtn">
+              <span class="icon" aria-hidden="true">
+                <svg viewBox="0 0 24 24" fill="currentColor">
+                  <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"></path>
+                </svg>
+              </span> 休息
+            </button>
+          </div>
+        </div>
+
+        <label class="switch" title="完成時震動（若裝置支援）">
+          <input type="checkbox" id="vibrateToggle">
+          <span>完成時震動</span>
+        </label>
+        <button class="seg-btn" id="soundTestBtn" title="測試提示音">試音🔊</button>
+      </div>
+    </header>
+
+    <div class="grid">
+      <section class="display" aria-live="polite">
+        <div class="time" id="timeText">00:05:00</div>
+        <div class="status" id="statusText">待命中</div>
+
+        <div class="inputs">
+          <div class="field">
+            <label for="mins">分鐘</label>
+            <input id="mins" type="number" min="0" max="999" step="1" value="5" />
+          </div>
+          <div class="field">
+            <label for="secs">秒</label>
+            <input id="secs" type="number" min="0" max="59" step="1" value="0" />
+          </div>
+        </div>
+
+        <div class="controls">
+          <button class="big-start" id="startPauseBtn" aria-label="開始或暫停">CRASTINA</button>
+        </div>
+
+        <div class="done-wrap" id="doneWrap">
+          <div class="done-line">為呼吸而暫停努力，不是退後，而是重新與自己對齊。</div>
+        </div>
+      </section>
+
+      <aside aria-label="右側：快捷鍵 + 速記">
+        <div class="shortcuts" id="shortcuts"></div>
+
+        <div class="fav-wrap">
+          <div class="fav-title">自訂常用（點擊使用；✕ 移除）</div>
+          <div class="fav-controls">
+            <input class="fav-input" id="favInput" type="number" placeholder="分鐘" min="1" max="240" />
+            <button class="fav-btn" id="favAddBtn">加入</button>
+            <div id="favChips"></div>
+          </div>
+        </div>
+
+        <div class="notes" id="notes">
+          <div class="note-card">
+            <div class="note-title">儀式速記</div>
+            <textarea id="noteText" class="note-text" placeholder=""></textarea>
+            <div class="note-actions" style="margin-top:8px;">
+              <button id="saveNoteBtn">儲存筆記</button>
+              <button id="copyNoteBtn">複製</button>
+              <button id="exportNoteBtn">匯出 .txt</button>
+              <span class="note-meta" id="noteHint">完成後自動帶入模式與時長（僅顯示於紀錄標題列）</span>
+            </div>
+          </div>
+          <div class="note-list" id="noteList"></div>
+        </div>
+      </aside>
+    </div>
+
+    <footer><div>提示：將此頁「加入主畫面」即可像 App 一樣使用。</div></footer>
+  </div>
+
+<script>
+(function(){
+  const $=s=>document.querySelector(s);
+  const body=document.body, timeText=$('#timeText'), statusText=$('#statusText');
+  const mins=$('#mins'), secs=$('#secs'), startPauseBtn=$('#startPauseBtn'), soundTestBtn=$('#soundTestBtn');
+  const doneWrap=$('#doneWrap');
+  const focusModeBtn=$('#focusModeBtn'), restModeBtn=$('#restModeBtn'), seg=$('#segmented');
+  const shortcutsWrap=$('#shortcuts'); const favInput=$('#favInput'), favAddBtn=$('#favAddBtn'), favChips=$('#favChips');
+  const vibrateToggle=$('#vibrateToggle');
+  const notes=$('#notes'), noteText=$('#noteText'), saveNoteBtn=$('#saveNoteBtn'), copyNoteBtn=$('#copyNoteBtn'), exportNoteBtn=$('#exportNoteBtn'), noteList=$('#noteList'), noteHint=$('#noteHint');
+
+  const MODE={FOCUS:'focus', REST:'rest'};
+
+  // Audio
+  let audioCtx=null;
+  function getAudioCtx(){ if(!audioCtx) audioCtx=new (window.AudioContext||window.webkitAudioContext)(); return audioCtx; }
+  function unlockAudio(){ try{ const ctx=getAudioCtx(); if(ctx.state==='suspended') ctx.resume(); }catch(e){} }
+  ['click','touchstart','keydown'].forEach(evt=>window.addEventListener(evt,unlockAudio,{passive:true}));
+
+  // Mode switch
+  function setMode(mode){ body.setAttribute('data-mode',mode); seg.dataset.active=mode; seg.classList.add('switching'); setTimeout(()=>seg.classList.remove('switching'),280); localStorage.setItem('crastina_mode',mode); }
+  focusModeBtn.addEventListener('click',()=>setMode(MODE.FOCUS));
+  restModeBtn.addEventListener('click',()=>setMode(MODE.REST));
+  setMode(localStorage.getItem('crastina_mode')||MODE.REST);
+
+  // Shortcuts
+  function renderShortcuts(){ shortcutsWrap.innerHTML=''; [5,8,15,30].forEach(m=>addShortcutButton(m)); }
+  function addShortcutButton(m){
+    const b=document.createElement('button'); b.className='sbtn'; b.textContent=String(m);
+    b.addEventListener('click',()=>{ mins.value=m; secs.value=0; total=toSeconds(mins.value,secs.value); plannedDurationText=format(total); persist(); hideDone(); unlockAudio(); start(true); });
+    shortcutsWrap.appendChild(b);
+  }
+  renderShortcuts();
+
+  // Favorites
+  function loadFavs(){ try{return JSON.parse(localStorage.getItem('crastina_favorites')||'[]')}catch(_){return[]} }
+  function saveFavs(arr){ localStorage.setItem('crastina_favorites',JSON.stringify(arr)); }
+  function renderFavs(){ favChips.innerHTML=''; loadFavs().forEach((m,idx)=>{ const chip=document.createElement('span'); chip.className='chip'; chip.innerHTML=`<span>${m} 分</span> <span class="rm" title="移除" aria-label="移除">✕</span>`; chip.addEventListener('click',(e)=>{ if(e.target.classList.contains('rm')){ const next=loadFavs().filter((_,i)=>i!==idx); saveFavs(next); renderFavs(); } else { mins.value=m; secs.value=0; total=toSeconds(m,0); plannedDurationText=format(total); persist(); hideDone(); unlockAudio(); start(true); } }); favChips.appendChild(chip); }); }
+  renderFavs();
+  favAddBtn.addEventListener('click',()=>{ const v=parseInt(favInput.value,10); if(!v||v<1||v>240){ favInput.focus(); return; } const favs=loadFavs(); if(!favs.includes(v)){ if(favs.length>=6) favs.shift(); favs.push(v); saveFavs(favs); } favInput.value=''; renderFavs(); });
+
+  // Vibrate
+  const vibPrefKey='crastina_vibrate';
+  vibrateToggle.checked=localStorage.getItem(vibPrefKey)==='1';
+  vibrateToggle.addEventListener('change',()=>localStorage.setItem(vibPrefKey, vibrateToggle.checked?'1':'0'));
+
+  // ===== Timer (endAt approach) =====
+  let total=toSeconds(mins.value,secs.value), timer=null, running=false;
+  let plannedDurationText = format(total);
+  let endAt = null; // ms timestamp for scheduled finish
+
+  const saved=localStorage.getItem('crastina_timer_last_v310');
+  if(saved){ try{ const {m,s}=JSON.parse(saved); mins.value=clamp(parseInt(m)||0,0,999); secs.value=clamp(parseInt(s)||0,0,59); total=toSeconds(mins.value,secs.value); plannedDurationText=format(total); render(); }catch(_){}} else { persist(); }
+
+  // try restore ongoing session
+  const savedEndAt = Number(localStorage.getItem('crastina_endAt')||0);
+  const wasRunning = localStorage.getItem('crastina_running')==='1';
+  if (wasRunning && savedEndAt > Date.now()){
+    endAt = savedEndAt; running = true;
+    document.body.classList.add('is-running');
+    startPauseBtn.textContent='暫停'; statusText.textContent='倒數中…';
+    tick(); timer=setInterval(tick,1000);
+  } else {
+    localStorage.setItem('crastina_running','0');
+    localStorage.removeItem('crastina_endAt');
+    render();
+  }
+
+  mins.addEventListener('change',()=>{ mins.value=clamp(mins.value,0,999); total=toSeconds(mins.value,secs.value); plannedDurationText=format(total); render(); persist(); hideDone(); });
+  secs.addEventListener('change',()=>{ secs.value=clamp(secs.value,0,59); total=toSeconds(mins.value,secs.value); plannedDurationText=format(total); render(); persist(); hideDone(); });
+
+  startPauseBtn.addEventListener('click',()=>{ unlockAudio(); if(!running) start(); else pause(); });
+  soundTestBtn.addEventListener('click',()=>{ unlockAudio(); beep(body.getAttribute('data-mode')); });
+
+  function start(fresh=false){
+    hideDone();
+    if(fresh){ total=toSeconds(mins.value,secs.value); plannedDurationText=format(total); }
+    if(total<=0){ total=toSeconds(mins.value,secs.value); plannedDurationText=format(total); }
+
+    endAt = Date.now() + total*1000;
+    localStorage.setItem('crastina_endAt', String(endAt));
+    localStorage.setItem('crastina_running', '1');
+
+    clearInterval(timer); running=true; document.body.classList.add('is-running');
+    startPauseBtn.textContent='暫停'; statusText.textContent='倒數中…';
+    tick(); timer=setInterval(tick,1000);
+  }
+  function pause(){
+    running=false; document.body.classList.remove('is-running');
+    startPauseBtn.textContent='CRASTINA'; statusText.textContent='已暫停';
+    if(timer) clearInterval(timer);
+    endAt = null; localStorage.setItem('crastina_running','0'); localStorage.removeItem('crastina_endAt');
+  }
+  function tick(){
+    if (!endAt){ render(); return; }
+    const msLeft = endAt - Date.now();
+    const secLeft = Math.ceil(msLeft/1000);
+    total = Math.max(0, secLeft);
+
+    if(total<=0){
+      pause(); statusText.textContent='完成'; render();
+      const mode=body.getAttribute('data-mode');
+      try{ if(localStorage.getItem('crastina_vibrate')==='1' && navigator.vibrate) navigator.vibrate([220,100,220,80,300]); }catch(_){}
+      beep(mode); showDone(); showNotes(mode, plannedDurationText); return;
+    }
+    render();
+  }
+
+  function render(){ timeText.textContent=format(total); document.title = timeText.textContent + ' • CRASTINA TIMER'; }
+  function toSeconds(m,s){ m=clamp(parseInt(m)||0,0,999); s=clamp(parseInt(s)||0,0,59); return m*60+s; }
+  function format(sec){ const m=Math.floor(sec/60), s=sec%60, hh=Math.floor(m/60), mm=m%60; return (hh>0?`${pad(hh)}:${pad(mm)}:${pad(s)}`:`${pad(mm)}:${pad(s)}`); }
+  function pad(n){ return String(n).padStart(2,'0'); } function clamp(n,min,max){ n=Number(n); if(isNaN(n)) return min; return Math.max(min, Math.min(max,n)); }
+  function persist(){ localStorage.setItem('crastina_timer_last_v310', JSON.stringify({m: mins.value, s: secs.value})); }
+
+  function beep(mode){
+    const ctx=getAudioCtx(); try{ if(ctx.state==='suspended') ctx.resume(); }catch(_){}
+    const now=ctx.currentTime;
+    const baseAsc=[880,1000,1120], baseDesc=baseAsc.slice().reverse();
+    const seq=(mode==='rest')?baseDesc:baseAsc;
+    const pattern=[0,0.18,0.36,0.9,1.08,1.26];
+    pattern.forEach((t,i)=>{
+      const o=ctx.createOscillator(), g=ctx.createGain(), f=seq[i%3];
+      o.type='sine'; o.frequency.value=f; o.connect(g); g.connect(ctx.destination);
+      g.gain.setValueAtTime(0.0001, now+t);
+      g.gain.exponentialRampToValueAtTime(0.22, now+t+0.03);
+      g.gain.exponentialRampToValueAtTime(0.0001, now+t+0.14);
+      o.start(now+t); o.stop(now+t+0.3);
+    });
+  }
+
+  function showDone(){ doneWrap.classList.add('show'); }
+  function hideDone(){ doneWrap.classList.remove('show'); notes.classList.remove('show'); }
+
+  document.addEventListener('visibilitychange', () => {
+    if (document.visibilityState === 'visible' && running) tick();
+  });
+  window.addEventListener('pageshow', () => { if (running) tick(); });
+
+  function dayKey(){ const d=new Date(); const p=n=>String(n).padStart(2,'0'); return `notes_${d.getFullYear()}-${p(d.getMonth()+1)}-${p(d.getDate())}`; }
+  function loadNotes(){ try{return JSON.parse(localStorage.getItem(dayKey())||'[]')}catch(_){return[]} }
+  function saveNotes(arr){ localStorage.setItem(dayKey(), JSON.stringify(arr)); }
+  function showNotes(mode, durationStr){
+    notes.classList.add('show');
+    noteText.value = '';
+    noteText.focus(); noteText.setSelectionRange(noteText.value.length, noteText.value.length);
+    renderNoteList();
+    notes.dataset.header = JSON.stringify({ mode, duration: durationStr });
+  }
+  function renderNoteList(){
+    const list=loadNotes(); noteList.innerHTML='';
+    list.slice().reverse().forEach((n,idxFromEnd)=>{
+      const item=document.createElement('div'); item.className='note-item';
+      const top=document.createElement('div'); top.className='top';
+      top.innerHTML=`<span>${n.time} ｜ ${n.mode==='focus'?'專注':'休息'} ｜ ${n.duration}</span>`;
+      const del=document.createElement('span'); del.className='del'; del.textContent='刪除';
+      del.addEventListener('click',()=>{ const all=loadNotes(); all.splice(all.length-1-idxFromEnd,1); saveNotes(all); renderNoteList(); });
+      top.appendChild(del); item.appendChild(top);
+      const body=document.createElement('div'); body.textContent=n.text; item.appendChild(body);
+      noteList.appendChild(item);
+    });
+  }
+  function saveCurrentNote(){
+    const text=noteText.value.trim(); if(!text){ noteHint.textContent='空白內容不會儲存'; noteText.focus(); return; }
+    const d=new Date(); const p=n=>String(n).padStart(2,'0'); const now=`${p(d.getHours())}:${p(d.getMinutes())}`;
+    let meta={ mode: body.getAttribute('data-mode'), duration: plannedDurationText };
+    try{ const h=JSON.parse(notes.dataset.header||'{}'); if(h.duration) meta.duration=h.duration; if(h.mode) meta.mode=h.mode; }catch(_){}
+    const newNote={ time:now, mode:meta.mode, duration:meta.duration, text };
+    const arr=loadNotes(); arr.push(newNote); saveNotes(arr); noteText.value=''; renderNoteList(); noteHint.textContent='已儲存 ✓';
+    setTimeout(()=>noteHint.textContent='完成後自動帶入模式與時長（僅顯示於紀錄標題列）',1800);
+  }
+  saveNoteBtn.addEventListener('click', saveCurrentNote);
+  copyNoteBtn.addEventListener('click', ()=>{ navigator.clipboard.writeText(noteText.value).then(()=>{ noteHint.textContent='已複製 ✓'; setTimeout(()=>noteHint.textContent='完成後自動帶入模式與時長（僅顯示於紀錄標題列）',1800); }); });
+  exportNoteBtn.addEventListener('click', ()=>{
+    const content = loadNotes().map(n=>`[${n.time}] (${n.mode==='focus'?'專注':'休息'} ${n.duration})\n${n.text}\n`).join('\n');
+    const blob = new Blob([content||'（今日尚無筆記）'], {type:'text/plain;charset=utf-8'});
+    const url = URL.createObjectURL(blob); const a=document.createElement('a');
+    a.href=url; a.download=`Crastina_Notes_${(new Date()).toISOString().slice(0,10)}.txt`; document.body.appendChild(a); a.click(); a.remove(); URL.revokeObjectURL(url);
+  });
+
+  renderNoteList();
+})();
+</script>
+</body>
+</html>
